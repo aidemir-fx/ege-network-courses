@@ -15,7 +15,7 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { authDatabase } from './db-shim.ts';
+import { authDatabase, ensureAuthSchema } from './db-shim.ts';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -131,6 +131,8 @@ const defaultSettings = {
 
 async function startupTasks() {
   try {
+    await ensureAuthSchema();
+
     const existingUsers = await authDatabase.prepare('SELECT id FROM users WHERE referral_code IS NULL').all();
     if (existingUsers && existingUsers.length > 0) {
       for (const u of existingUsers) {
@@ -1584,7 +1586,7 @@ router.get('/users/all', async (_req: Request, res: Response) => {
 // ============================================
 
 const getAllOrdersStmt = authDatabase.prepare(`
-  SELECT * FROM orders ORDER BY rowid DESC
+  SELECT * FROM orders ORDER BY created_at DESC NULLS LAST, id DESC
 `);
 
 const insertOrderStmt = authDatabase.prepare(`
@@ -1632,11 +1634,11 @@ const findUserPurchasesStmt = authDatabase.prepare(`
   SELECT * FROM user_purchases
   WHERE (user_id = ? OR (user_telegram_id IS NOT NULL AND user_telegram_id = ?))
     AND status = 'active'
-  ORDER BY rowid DESC
+  ORDER BY granted_at DESC NULLS LAST, id DESC
 `);
 
 const getAllPurchasesStmt = authDatabase.prepare(`
-  SELECT * FROM user_purchases ORDER BY rowid DESC
+  SELECT * FROM user_purchases ORDER BY granted_at DESC NULLS LAST, id DESC
 `);
 
 const revokePurchaseStmt = authDatabase.prepare(`
@@ -1659,7 +1661,7 @@ const updatePurchasedCountStmt = authDatabase.prepare(`
 
 // Promocodes statements
 const getAllPromocodesStmt = authDatabase.prepare(`
-  SELECT * FROM promocodes ORDER BY rowid DESC
+  SELECT * FROM promocodes ORDER BY created_at DESC NULLS LAST, id DESC
 `);
 
 const findPromocodeByCodeStmt = authDatabase.prepare(`
@@ -1685,7 +1687,7 @@ const deletePromocodeStmt = authDatabase.prepare(`
 
 // System logs statements
 const getAllLogsStmt = authDatabase.prepare(`
-  SELECT * FROM system_logs ORDER BY rowid DESC LIMIT 100
+  SELECT * FROM system_logs ORDER BY timestamp DESC NULLS LAST, id DESC LIMIT 100
 `);
 
 const insertLogStmt = authDatabase.prepare(`
@@ -2190,8 +2192,8 @@ router.post('/promocodes/create', async (req: Request, res: Response) => {
 router.patch('/promocodes/:id/toggle', async (req: Request, res: Response) => {
   try {
     const promoId = req.params.id;
-    await togglePromocodeActiveStmt.run(promoId);
-    return res.json({ success: true });
+    const result = await togglePromocodeActiveStmt.run(promoId);
+    return res.json({ success: true, changed: Number((result as any)?.changes ?? 0) });
   } catch (err: any) {
     console.error('[Promocodes] Error toggling promocode:', err);
     return res.status(500).json({ success: false, error: err.message });
@@ -2202,8 +2204,8 @@ router.patch('/promocodes/:id/toggle', async (req: Request, res: Response) => {
 router.delete('/promocodes/:id', async (req: Request, res: Response) => {
   try {
     const promoId = req.params.id;
-    await deletePromocodeStmt.run(promoId);
-    return res.json({ success: true });
+    const result = await deletePromocodeStmt.run(promoId);
+    return res.json({ success: true, deleted: Number((result as any)?.changes ?? 0) });
   } catch (err: any) {
     console.error('[Promocodes] Error deleting promocode:', err);
     return res.status(500).json({ success: false, error: err.message });
@@ -2323,7 +2325,7 @@ router.post('/settings', async (req: Request, res: Response) => {
 // GET /api/support
 router.get('/support', async (_req: Request, res: Response) => {
   try {
-    const rows = await authDatabase.prepare('SELECT * FROM support_messages ORDER BY rowid ASC').all() as any[];
+    const rows = await authDatabase.prepare('SELECT * FROM support_messages ORDER BY created_at ASC, id ASC').all() as any[];
     const messages = rows.map(r => ({
       id: r.id,
       userTelegramId: r.user_telegram_id,

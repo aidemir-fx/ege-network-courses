@@ -125,28 +125,6 @@ const DEFAULT_SETTINGS: SiteSettings = {
   discountBannerText: '',
 };
 
-// DEFAULT PROMOCODES
-const DEFAULT_PROMOCODES: Promocode[] = [
-  {
-    id: 'p-1',
-    code: 'EGE2026',
-    discountPercent: 15,
-    maxUses: 500,
-    usedCount: 0,
-    active: true,
-    createdAt: '2026-08-01',
-  },
-  {
-    id: 'p-2',
-    code: 'START2027',
-    discountPercent: 20,
-    maxUses: 100,
-    usedCount: 0,
-    active: true,
-    createdAt: '2026-08-02',
-  },
-];
-
 // --- USERS ---
 export function getStoredUsers(): User[] {
   try {
@@ -476,13 +454,9 @@ export async function removeUserCourseServer(data: {
 export function getStoredPromocodes(): Promocode[] {
   try {
     const raw = localStorage.getItem(PROMOCODES_KEY);
-    if (!raw) {
-      localStorage.setItem(PROMOCODES_KEY, JSON.stringify(DEFAULT_PROMOCODES));
-      return DEFAULT_PROMOCODES;
-    }
-    return JSON.parse(raw);
+    return raw ? JSON.parse(raw) : [];
   } catch {
-    return DEFAULT_PROMOCODES;
+    return [];
   }
 }
 
@@ -575,6 +549,9 @@ export async function deletePromocodeServer(id: string): Promise<boolean> {
 
     const payload = await res.json().catch(() => ({ success: true }));
     if (payload?.success === false) return false;
+
+    const current = getStoredPromocodes().filter((p) => p.id !== id);
+    saveStoredPromocodes(current);
 
     const refreshed = await fetchServerPromocodes();
     saveStoredPromocodes(refreshed);

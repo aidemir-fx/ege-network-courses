@@ -129,6 +129,14 @@ const defaultSettings = {
       discountBannerText: 'До 15 августа: Покупай весь новый курс 2027 — и получай полный курс прошлого года в подарок!',
     };
 
+const normalizeTelegramId = (value?: string | number | null): string => {
+  if (value === undefined || value === null) return '';
+  const raw = String(value).trim().replace(/^@/, '');
+  if (!raw || raw === 'null' || raw === 'undefined') return '';
+  const noTelegramPrefix = raw.replace(/^tg_/, '');
+  return noTelegramPrefix.replace(/@telegram\.user$/i, '');
+};
+
 async function startupTasks() {
   try {
     await ensureAuthSchema();
@@ -580,12 +588,12 @@ async function handleTelegramBotStartCommand(message: any): Promise<boolean> {
     return true;
   }
 
-  const tgIdStr = String(from.id);
+  const tgIdStr = normalizeTelegramId(from.id);
   const firstName = from.first_name || 'Пользователь';
   const lastName = from.last_name || '';
   const username = from.username || '';
   const fullName = `${firstName} ${lastName}`.trim();
-  const userId = `usr-${tgIdStr}`;
+  const userId = tgIdStr ? `usr-${tgIdStr}` : `usr-${Date.now()}`;
 
   // Check or create user in SQLite
   const existingUserRow = await findUserById.get(userId);
@@ -1737,7 +1745,7 @@ export async function grantPurchasesForOrder(order: any) {
 
     const now = new Date().toLocaleString('ru-RU');
     const uId = order.user_id || order.userId || `usr-anon-${Date.now()}`;
-    const tgId = order.user_telegram_id || order.userTelegramId || null;
+    const tgId = normalizeTelegramId(order.user_telegram_id || order.userTelegramId || null);
     const ordId = order.id;
 
     for (const item of items) {
@@ -1807,12 +1815,17 @@ export async function recordServerOrder(orderData: {
   const status = orderData.status || 'pending';
   const paidAt = status === 'paid' ? now : null;
 
+  const cleanUserId = String(orderData.userId ?? '').trim();
+  const cleanTelegramId = normalizeTelegramId(orderData.userTelegramId);
+  const cleanUserName = String(orderData.userName ?? '').trim();
+  const cleanCustomerEmail = String(orderData.customerEmail ?? '').trim();
+
   await insertOrderStmt.run(
     ordId,
-    orderData.userId || null,
-    orderData.userTelegramId || null,
-    orderData.userName || 'Пользователь',
-    orderData.customerEmail || null,
+    cleanUserId && cleanUserId !== 'undefined' && cleanUserId !== 'null' ? cleanUserId : null,
+    cleanTelegramId || null,
+    cleanUserName && cleanUserName !== 'undefined' && cleanUserName !== 'null' ? cleanUserName : 'Пользователь',
+    cleanCustomerEmail && cleanCustomerEmail !== 'undefined' && cleanCustomerEmail !== 'null' ? cleanCustomerEmail : null,
     JSON.stringify(orderData.items || []),
     Number(orderData.totalAmount) || 0,
     Number(orderData.discountAmount) || 0,
@@ -2059,12 +2072,6 @@ router.get('/user/purchases', async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
-
-const normalizeTelegramId = (value?: string | number | null) => {
-  if (value === undefined || value === null || value === 'null' || value === 'undefined') return '';
-  const cleaned = String(value).trim().replace(/^@/, '');
-  return cleaned === 'null' || cleaned === 'undefined' ? '' : cleaned;
-};
 
 const normalizeUserId = (userId?: string | null, userTelegramId?: string | number | null) => {
   const cleanUserId = String(userId ?? '').trim();

@@ -296,12 +296,24 @@ export async function fetchServerOrders(): Promise<Order[]> {
   return getStoredOrders();
 }
 
+const normalizeTelegramId = (value?: string | null): string => {
+  if (!value) return '';
+  const raw = String(value).trim().replace(/^@/, '');
+  if (!raw || raw === 'null' || raw === 'undefined') return '';
+  return raw.replace(/^tg_/, '').replace(/@telegram\.user$/i, '');
+};
+
 export function createNewOrder(orderData: Omit<Order, 'id' | 'createdAt'>): Order {
   const orders = getStoredOrders();
   const ordId = `#${Math.floor(1000 + Math.random() * 9000)}`;
   const now = new Date().toLocaleString('ru-RU');
+  const normalizedUserTelegramId = normalizeTelegramId(orderData.userTelegramId);
+  const normalizedUserName = String(orderData.userName ?? '').trim();
+
   const newOrder: Order = {
     ...orderData,
+    userTelegramId: normalizedUserTelegramId,
+    userName: normalizedUserName && normalizedUserName !== 'undefined' && normalizedUserName !== 'null' ? normalizedUserName : 'Пользователь',
     id: ordId,
     createdAt: now,
   };

@@ -133,6 +133,17 @@ async function startupTasks() {
   try {
     await ensureAuthSchema();
 
+    try {
+      await authDatabase.prepare(`
+        ALTER TABLE telegram_auth_sessions
+          ALTER COLUMN auth_date TYPE BIGINT USING auth_date::BIGINT,
+          ALTER COLUMN created_at TYPE BIGINT USING created_at::BIGINT,
+          ALTER COLUMN confirmed_at TYPE BIGINT USING confirmed_at::BIGINT;
+      `).run();
+    } catch (e) {
+      console.warn('[TelegramAuth] Ignore bigint migration warning:', e);
+    }
+
     const existingUsers = await authDatabase.prepare('SELECT id FROM users WHERE referral_code IS NULL').all();
     if (existingUsers && existingUsers.length > 0) {
       for (const u of existingUsers) {

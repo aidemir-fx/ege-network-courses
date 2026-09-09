@@ -33,11 +33,16 @@ export async function ensureAuthSchema() {
       last_name TEXT,
       username TEXT,
       photo_url TEXT,
-      auth_date INTEGER,
+      auth_date BIGINT,
       user_id TEXT,
-      created_at INTEGER NOT NULL,
-      confirmed_at INTEGER
+      created_at BIGINT NOT NULL,
+      confirmed_at BIGINT
     );
+
+    ALTER TABLE telegram_auth_sessions
+      ALTER COLUMN auth_date TYPE BIGINT USING auth_date::BIGINT,
+      ALTER COLUMN created_at TYPE BIGINT USING created_at::BIGINT,
+      ALTER COLUMN confirmed_at TYPE BIGINT USING confirmed_at::BIGINT;
 
     CREATE TABLE IF NOT EXISTS registered_users (
       id TEXT PRIMARY KEY,

@@ -1,4 +1,4 @@
-import { pgTable, text, integer, real } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, bigint } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -29,10 +29,10 @@ export const telegramAuthSessions = pgTable('telegram_auth_sessions', {
   lastName: text('last_name'),
   username: text('username'),
   photoUrl: text('photo_url'),
-  authDate: integer('auth_date'),
+  authDate: bigint('auth_date', { mode: 'number' }),
   userId: text('user_id'),
-  createdAt: integer('created_at').notNull(),
-  confirmedAt: integer('confirmed_at')
+  createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+  confirmedAt: bigint('confirmed_at', { mode: 'number' })
 });
 
 export const registeredUsers = pgTable('registered_users', {

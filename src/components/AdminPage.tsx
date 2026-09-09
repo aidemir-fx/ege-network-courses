@@ -366,8 +366,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
 
     const parsed = parseExternalCourse(ec);
 
-    // Call server grant access endpoint
-    await grantUserAccessServer({
+    const granted = await grantUserAccessServer({
       userId: grantAccessModalUser.id,
       userTelegramId: grantAccessModalUser.telegramId,
       courseId: parsed.id,
@@ -377,6 +376,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
       year: parsed.year,
       price: 0,
     });
+
+    if (!granted) {
+      showToast(`Не удалось выдать курс "${parsed.title}" пользователю @${grantAccessModalUser.telegramId}`);
+      return;
+    }
 
     addSystemLog('Ручная выдача курса', `Выдан партнерский курс "${parsed.title}" пользователю @${grantAccessModalUser.telegramId}`, currentUser?.telegramId);
     showToast(`Курс "${parsed.title}" успешно выдан пользователю @${grantAccessModalUser.telegramId}!`);
@@ -557,7 +561,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
       return;
     }
 
-    await createPromocodeServer(cleanCode, newPromoDiscount, newPromoMaxUses);
+    const created = await createPromocodeServer(cleanCode, newPromoDiscount, newPromoMaxUses);
+    if (!created) {
+      showToast('Не удалось создать промокод на сервере');
+      return;
+    }
+
     addSystemLog('Создан промокод', `Промокод ${cleanCode} (-${newPromoDiscount}%) создан`, currentUser?.telegramId);
     showToast(`Промокод ${cleanCode} на скидку ${newPromoDiscount}% создан!`);
     setShowPromoModal(false);
@@ -567,18 +576,28 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
 
   const handleTogglePromoActive = async (promoId: string) => {
     const promo = promocodesList.find((p) => p.id === promoId);
-    if (promo) {
-      const nextActive = !promo.active;
-      showToast(`Промокод ${promo.code} ${nextActive ? 'активирован' : 'деактивирован'}`);
+    if (!promo) return;
+
+    const nextActive = !promo.active;
+    const toggled = await togglePromocodeServer(promoId);
+    if (!toggled) {
+      showToast(`Не удалось ${nextActive ? 'активировать' : 'деактивировать'} промокод ${promo.code}`);
+      return;
     }
-    await togglePromocodeServer(promoId);
+
+    showToast(`Промокод ${promo.code} ${nextActive ? 'активирован' : 'деактивирован'}`);
     refreshAllData();
   };
 
   const handleDeletePromo = async (promoId: string, code: string) => {
+    const deleted = await deletePromocodeServer(promoId);
+    if (!deleted) {
+      showToast(`Не удалось удалить промокод ${code}`);
+      return;
+    }
+
     addSystemLog('Удален промокод', `Удален промокод ${code}`, currentUser?.telegramId);
     showToast(`Промокод ${code} удален`);
-    await deletePromocodeServer(promoId);
     refreshAllData();
   };
 

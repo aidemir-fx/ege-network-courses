@@ -421,7 +421,15 @@ export async function grantUserAccessServer(data: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return res.ok;
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      console.warn('Grant course failed:', payload?.error || res.statusText);
+      return false;
+    }
+
+    const payload = await res.json().catch(() => ({ success: true }));
+    return payload?.success !== false;
   } catch (e) {
     console.warn('Failed to grant access on server:', e);
     return false;
@@ -510,7 +518,19 @@ export async function createPromocodeServer(code: string, discountPercent: numbe
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, discountPercent, maxUses }),
     });
-    return res.ok;
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      console.warn('Promocode create failed:', payload?.error || res.statusText);
+      return false;
+    }
+
+    const payload = await res.json().catch(() => ({ success: true }));
+    if (payload?.success === false) return false;
+
+    const refreshed = await fetchServerPromocodes();
+    saveStoredPromocodes(refreshed);
+    return true;
   } catch (e) {
     console.warn('Failed to create promocode on server:', e);
     return false;
@@ -522,7 +542,19 @@ export async function togglePromocodeServer(id: string): Promise<boolean> {
     const res = await fetch(`/api/auth/promocodes/${encodeURIComponent(id)}/toggle`, {
       method: 'PATCH',
     });
-    return res.ok;
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      console.warn('Promocode toggle failed:', payload?.error || res.statusText);
+      return false;
+    }
+
+    const payload = await res.json().catch(() => ({ success: true }));
+    if (payload?.success === false) return false;
+
+    const refreshed = await fetchServerPromocodes();
+    saveStoredPromocodes(refreshed);
+    return true;
   } catch (e) {
     console.warn('Failed to toggle promocode on server:', e);
     return false;
@@ -534,7 +566,19 @@ export async function deletePromocodeServer(id: string): Promise<boolean> {
     const res = await fetch(`/api/auth/promocodes/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
-    return res.ok;
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      console.warn('Promocode delete failed:', payload?.error || res.statusText);
+      return false;
+    }
+
+    const payload = await res.json().catch(() => ({ success: true }));
+    if (payload?.success === false) return false;
+
+    const refreshed = await fetchServerPromocodes();
+    saveStoredPromocodes(refreshed);
+    return true;
   } catch (e) {
     console.warn('Failed to delete promocode on server:', e);
     return false;

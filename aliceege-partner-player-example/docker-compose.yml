@@ -1,0 +1,18 @@
+services:
+  player:
+    build:
+      context: .
+      target: runtime
+    env_file:
+      - .env
+    init: true
+    ports:
+      - "127.0.0.1:8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

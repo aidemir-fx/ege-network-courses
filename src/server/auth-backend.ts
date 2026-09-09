@@ -1510,7 +1510,8 @@ router.post('/users/sync', async (req: Request, res: Response) => {
       user.status || 'active',
       regDate,
       now,
-      user.purchasedCourses?.length || 0
+      user.purchasedCourses?.length || 0,
+      user.isPartner ? 1 : 0
     );
 
     console.log(`[Admin Auth] User synced: ${user.name} (TG: ${tgId}, Email: ${user.email}, Role: ${finalRole})`);
@@ -1569,7 +1570,7 @@ router.get('/users/all', async (_req: Request, res: Response) => {
           eu.created_at ? eu.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
           eu.last_login_at || new Date().toLocaleString('ru-RU'),
           0,
-          0
+          eu.is_partner ? 1 : 0
         );
       } catch (e) {
         // ignore

@@ -709,7 +709,7 @@ router.get('/admins', async (_req: Request, res: Response) => {
 router.post('/telegram/session/create', async (_req: Request, res: Response) => {
   try {
     // Clean up expired sessions (> 15 minutes)
-    cleanupExpiredSessions.run(Date.now() - 15 * 60 * 1000);
+    await cleanupExpiredSessions.run(Date.now() - 15 * 60 * 1000);
 
     const sessionId = `tg_${crypto.randomBytes(12).toString('hex')}`;
     const botUsername = getTelegramBotUsername() || 'EgeNetwork11_bot';
@@ -2066,7 +2066,7 @@ router.get('/user/purchases', async (req: Request, res: Response) => {
       return res.json({ success: true, purchases: [] });
     }
 
-    const purchases = getUserPurchasesDirect(userId, tgId);
+    const purchases = await getUserPurchasesDirect(userId, tgId);
     return res.json({ success: true, purchases });
   } catch (err: any) {
     console.error('[Purchases] Error fetching user purchases:', err);
@@ -2387,7 +2387,7 @@ router.post('/support', async (req: Request, res: Response) => {
     if (!msg || !msg.id) {
       return res.status(400).json({ success: false, error: 'Invalid support message data' });
     }
-    authDatabase.prepare(`
+    await authDatabase.prepare(`
       INSERT OR REPLACE INTO support_messages (id, user_telegram_id, user_name, sender, text, created_at, is_read)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(

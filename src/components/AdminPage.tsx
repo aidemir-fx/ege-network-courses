@@ -365,10 +365,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
     if (!ec) return;
 
     const parsed = parseExternalCourse(ec);
+    const targetTelegramId = grantAccessModalUser.telegramId ? String(grantAccessModalUser.telegramId).replace(/^@/, '') : '';
+    const targetLabel = targetTelegramId ? `@${targetTelegramId}` : (grantAccessModalUser.email || grantAccessModalUser.name || grantAccessModalUser.id);
 
     const granted = await grantUserAccessServer({
       userId: grantAccessModalUser.id,
-      userTelegramId: grantAccessModalUser.telegramId,
+      userTelegramId: targetTelegramId,
       courseId: parsed.id,
       courseTitle: parsed.title,
       subject: parsed.subject,
@@ -378,12 +380,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
     });
 
     if (!granted) {
-      showToast(`Не удалось выдать курс "${parsed.title}" пользователю @${grantAccessModalUser.telegramId}`);
+      showToast(`Не удалось выдать курс "${parsed.title}" пользователю ${targetLabel}`);
       return;
     }
 
-    addSystemLog('Ручная выдача курса', `Выдан партнерский курс "${parsed.title}" пользователю @${grantAccessModalUser.telegramId}`, currentUser?.telegramId);
-    showToast(`Курс "${parsed.title}" успешно выдан пользователю @${grantAccessModalUser.telegramId}!`);
+    addSystemLog('Ручная выдача курса', `Выдан партнерский курс "${parsed.title}" пользователю ${targetLabel}`, currentUser?.telegramId);
+    showToast(`Курс "${parsed.title}" успешно выдан пользователю ${targetLabel}!`);
     setGrantAccessModalUser(null);
     setSelectedCourseToGrant('');
     refreshAllData();

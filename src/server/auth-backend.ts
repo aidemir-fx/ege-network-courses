@@ -2060,11 +2060,28 @@ router.get('/user/purchases', async (req: Request, res: Response) => {
   }
 });
 
+const normalizeTelegramId = (value?: string | number | null) => {
+  if (value === undefined || value === null || value === 'null' || value === 'undefined') return '';
+  const cleaned = String(value).trim().replace(/^@/, '');
+  return cleaned === 'null' || cleaned === 'undefined' ? '' : cleaned;
+};
+
+const normalizeUserId = (userId?: string | null, userTelegramId?: string | number | null) => {
+  const cleanUserId = String(userId ?? '').trim();
+  if (cleanUserId && cleanUserId !== 'null' && cleanUserId !== 'undefined') return cleanUserId;
+
+  const tgId = normalizeTelegramId(userTelegramId);
+  return tgId ? `usr-${tgId}` : '';
+};
+
 // POST /api/auth/admin/users/grant-course - Ручная выдача доступа
 router.post('/admin/users/grant-course', async (req: Request, res: Response) => {
   try {
     const { userId, userTelegramId, courseId, courseTitle, subject, school, year, price } = req.body;
-    if (!userId && !userTelegramId) {
+    const normalizedTelegramId = normalizeTelegramId(userTelegramId);
+    const normalizedUserId = normalizeUserId(userId, normalizedTelegramId);
+
+    if (!normalizedUserId && !normalizedTelegramId) {
       return res.status(400).json({ success: false, error: 'User identifier required' });
     }
 
@@ -2079,11 +2096,13 @@ router.post('/admin/users/grant-course', async (req: Request, res: Response) => 
     }
     const expiresAt = expiryDate.toISOString();
     const tariffType = isAnnual ? 'annual' : 'monthly';
+    const finalUserId = normalizedUserId || `usr-${normalizedTelegramId}`;
+    const finalTelegramId = normalizedTelegramId || null;
 
     await insertUserPurchaseStmt.run(
       pId,
-      userId || `usr-${userTelegramId}`,
-      userTelegramId || null,
+      finalUserId,
+      finalTelegramId,
       'admin_manual',
       courseId || `crs-${Date.now()}`,
       courseTitle || 'Курс подготовки',
@@ -2097,8 +2116,9 @@ router.post('/admin/users/grant-course', async (req: Request, res: Response) => 
       tariffType
     );
 
-    await updatePurchasedCountStmt.run(userId || `usr-${userTelegramId}`, userTelegramId || null);
-    recordSystemLog('Ручная выдача доступа', `Выдан курс "${courseTitle}" пользователю @${userTelegramId || userId}`);
+    await updatePurchasedCountStmt.run(finalUserId, finalTelegramId);
+    const userLabel = finalTelegramId ? `@${finalTelegramId}` : (finalUserId || 'неизвестный пользователь');
+    recordSystemLog('Ручная выдача доступа', `Выдан курс "${courseTitle}" пользователю ${userLabel}`);
 
     return res.json({ success: true, message: 'Access granted' });
   } catch (err: any) {

@@ -385,8 +385,21 @@ export async function fetchUserPurchases(userId?: string, telegramId?: string): 
     const res = await fetch(`/api/auth/user/purchases?${query.toString()}`);
     if (res.ok) {
       const data = await res.json();
-      if (data.success && Array.isArray(data.purchases)) {
-        return data.purchases;
+      const purchases = data?.purchases;
+
+      if (Array.isArray(purchases)) {
+        return purchases;
+      }
+
+      if (purchases && typeof purchases === 'object') {
+        if (Array.isArray((purchases as any).items)) {
+          return (purchases as any).items;
+        }
+
+        const values = Object.values(purchases as Record<string, unknown>);
+        if (Array.isArray(values) && values.length > 0 && values.every((v) => typeof v === 'object' || typeof v === 'string')) {
+          return values as any[];
+        }
       }
     }
   } catch (e) {

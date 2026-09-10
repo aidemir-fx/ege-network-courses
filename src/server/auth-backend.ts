@@ -1121,7 +1121,7 @@ router.post('/verify-email', async (req: Request, res: Response) => {
     user.emailVerified = true;
     user.verificationToken = undefined;
     user.verificationTokenExpiry = undefined;
-    saveUser(user);
+    await saveUser(user);
 
     return res.json({
       success: true,
@@ -1170,7 +1170,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
         user.lockUntil = Date.now() + 15 * 60 * 1000; // 15 минут блокировки
       }
 
-      saveUser(user);
+      await saveUser(user);
       return res.status(401).json({ success: false, error: 'Неверные учетные данные' });
     }
 
@@ -1179,7 +1179,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
     user.lockUntil = undefined;
     user.emailVerified = true;
     user.lastLoginAt = new Date().toISOString();
-    saveUser(user);
+    await saveUser(user);
 
     const accessToken = generateToken(user.id, JWT_SECRET, '1h');
     const refreshToken = generateToken(user.id, JWT_REFRESH_SECRET, '7d');

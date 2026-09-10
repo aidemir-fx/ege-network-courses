@@ -284,7 +284,7 @@ export default function App() {
   const openAuthModal = () => {
     setAuthModalInitialMode('login');
     setAuthModalResetToken(undefined);
-    openAuthModal();
+    setIsAuthOpen(true);
   };
 
   const handleLogout = () => {

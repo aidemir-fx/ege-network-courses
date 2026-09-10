@@ -351,6 +351,7 @@ export default function App() {
             currentUser={currentUser}
             onExitAdmin={() => setActivePage('catalog')}
             showToast={showToast}
+            onUserUpdate={setCurrentUser}
           />
         )}
       </main>

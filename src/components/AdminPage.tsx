@@ -93,9 +93,10 @@ interface AdminPageProps {
   currentUser: User | null;
   onExitAdmin: () => void;
   showToast: (msg: string) => void;
+  onUserUpdate?: (user: User) => void;
 }
 
-export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, showToast }) => {
+export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, showToast, onUserUpdate }) => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [staffList, setStaffList] = useState<AdminStaff[]>(() => getAdminStaffList());
 
@@ -331,7 +332,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
           const ident = u.telegramId ? `@${u.telegramId}` : (u.email || u.name);
           addSystemLog('Изменение прав партнера', `Пользователь ${ident} ${nextPartner ? 'стал партнером' : 'перестал быть партнером'}`, currentUser?.telegramId);
           showToast(`${ident} ${nextPartner ? 'теперь партнер' : 'больше не партнер'}`);
-          return { ...u, isPartner: nextPartner };
+          const updatedUser = { ...u, isPartner: nextPartner };
+          if (currentUser?.id === userId && onUserUpdate) {
+            onUserUpdate(updatedUser);
+          }
+          return updatedUser;
         }
         return u;
       });
@@ -788,7 +793,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
           { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
           { id: 'users', label: 'Ученики', icon: Users, count: usersList.length },
           { id: 'partners', label: 'Партнеры', icon: Share2, count: usersList.filter(u => u.isPartner).length },
-          { id: 'courses', label: 'Курсы', icon: BookOpen, count: coursesList.length },
           { id: 'orders', label: 'Заказы', icon: ShoppingCart, count: ordersList.length },
           { id: 'promocodes', label: 'Промокоды', icon: Tag, count: promocodesList.length },
           { id: 'support', label: 'Поддержка', icon: MessageSquare, count: Object.keys(supportUsersMap).length },
@@ -839,7 +843,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
               { id: 'dashboard', label: 'Главная', icon: LayoutDashboard },
               { id: 'users', label: 'Пользователи', icon: Users, count: usersList.length },
               { id: 'partners', label: 'Партнеры', icon: Share2, count: usersList.filter(u => u.isPartner).length },
-              { id: 'courses', label: 'Каталог курсов', icon: BookOpen, count: coursesList.length },
               { id: 'orders', label: 'Заказы', icon: ShoppingCart, count: ordersList.length },
               { id: 'promocodes', label: 'Промокоды', icon: Tag, count: promocodesList.length },
               { id: 'support', label: 'Поддержка', icon: MessageSquare, count: Object.keys(supportUsersMap).length },
@@ -1397,109 +1400,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* TAB 4: COURSES CATALOG */}
-          {activeTab === 'courses' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                    <BookOpen className="w-7 h-7 text-purple-400" />
-                    Управление каталогом курсов
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">Добавление, редактирование цен, скрытие и удаление предметов</p>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="flex rounded-xl bg-slate-900 p-1 border border-slate-700/80">
-                    <button
-                      onClick={() => setCourseExamFilter('all')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${courseExamFilter === 'all' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
-                    >
-                      Все
-                    </button>
-                    <button
-                      onClick={() => setCourseExamFilter('EGE')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${courseExamFilter === 'EGE' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
-                    >
-                      ЕГЭ
-                    </button>
-                    <button
-                      onClick={() => setCourseExamFilter('OGE')}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${courseExamFilter === 'OGE' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
-                    >
-                      ОГЭ
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={handleOpenAddCourse}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-purple-600/30 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Добавить курс</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {coursesList
-                  .filter((c) => courseExamFilter === 'all' || c.exam === courseExamFilter)
-                  .map((c) => (
-                    <div key={c.id} className={`p-4 rounded-2xl bg-[#151C2C] border transition-all ${c.isHidden ? 'border-amber-500/40 opacity-75' : 'border-slate-800/80 hover:border-slate-700'} space-y-3 flex flex-col justify-between`}>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="px-2.5 py-0.5 rounded-lg bg-purple-950 text-purple-300 font-extrabold text-[10px] border border-purple-800/40">
-                            {c.exam} · {c.year} · {c.school}
-                          </span>
-                          {c.isHidden && (
-                            <span className="text-[10px] text-amber-400 font-bold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
-                              Скрыт
-                            </span>
-                          )}
-                        </div>
-
-                        <h4 className="font-black text-sm text-white leading-snug">{c.title}</h4>
-                        <div className="text-xs text-slate-400 font-semibold">{c.subject}</div>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between">
-                        <div>
-                          <div className="text-lg font-black text-emerald-400">{c.price} ₽</div>
-                          {c.originalPrice && (
-                            <div className="text-[10px] text-slate-500 line-through">{c.originalPrice} ₽</div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => handleToggleCourseHidden(c.id)}
-                            className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 transition-colors cursor-pointer"
-                            title={c.isHidden ? 'Опубликовать' : 'Скрыть'}
-                          >
-                            {c.isHidden ? <Eye className="w-4 h-4 text-emerald-400" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
-                          </button>
-                          <button
-                            onClick={() => handleOpenEditCourse(c)}
-                            className="p-2 rounded-lg bg-purple-900/30 hover:bg-purple-900/60 text-purple-300 transition-colors cursor-pointer"
-                            title="Редактировать"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCourse(c.id, c.title)}
-                            className="p-2 rounded-lg bg-red-950/40 hover:bg-red-900/60 text-red-400 transition-colors cursor-pointer"
-                            title="Удалить"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
             </div>
           )}
 

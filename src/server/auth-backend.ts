@@ -1096,7 +1096,7 @@ router.post('/register', registerLimiter, async (req: Request, res: Response) =>
     });
   } catch (error: any) {
     console.error('Register error:', error);
-    return res.status(500).json({ success: false, error: 'Ошибка регистрации' });
+    return res.status(500).json({ success: false, error: 'Ошибка регистрации: ' + error.message });
   }
 });
 
@@ -1251,7 +1251,7 @@ router.post('/forgot-password', recoveryLimiter, async (req: Request, res: Respo
     const resetToken = generateVerificationToken();
     user.resetToken = resetToken;
     user.resetTokenExpiry = Date.now() + 1 * 60 * 60 * 1000; // 1 час
-    saveUser(user);
+    await saveUser(user);
 
     // Отправка письма
     try {
@@ -1266,7 +1266,7 @@ router.post('/forgot-password', recoveryLimiter, async (req: Request, res: Respo
     });
   } catch (error: any) {
     console.error('Forgot password error:', error);
-    return res.status(500).json({ success: false, error: 'Ошибка' });
+    return res.status(500).json({ success: false, error: 'Ошибка: ' + error.message });
   }
 });
 
@@ -1296,7 +1296,7 @@ router.post('/reset-password', recoveryLimiter, async (req: Request, res: Respon
     user.resetToken = undefined;
     user.resetTokenExpiry = undefined;
     user.loginAttempts = 0; // Сброс попыток входа
-    saveUser(user);
+    await saveUser(user);
 
     return res.json({
       success: true,

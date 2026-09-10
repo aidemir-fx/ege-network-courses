@@ -22,14 +22,16 @@ interface AuthModalProps {
   onClose: () => void;
   showToast: (msg: string) => void;
   onLoginSuccess: (user: User) => void;
+  initialMode?: AuthMode;
+  resetToken?: string;
 }
 
 type AuthTab = 'telegram' | 'email';
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset';
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast, onLoginSuccess }) => {
-  const [authTab, setAuthTab] = useState<AuthTab>('telegram');
-  const [mode, setMode] = useState<AuthMode>('login');
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast, onLoginSuccess, initialMode, resetToken }) => {
+  const [authTab, setAuthTab] = useState<AuthTab>(initialMode === 'reset' ? 'email' : 'telegram');
+  const [mode, setMode] = useState<AuthMode>(initialMode || 'login');
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [nameInput, setNameInput] = useState('');
@@ -79,6 +81,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast
       setTgStatus('expired');
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      setAuthTab(initialMode === 'reset' ? 'email' : 'telegram');
+      setMode(initialMode || 'login');
+      setLoading(false);
+    }
+  }, [isOpen, initialMode]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -560,6 +570,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast
     setMode('login');
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    if (!validators.password(passwordInput).valid) {
+      showToast(validators.password(passwordInput).error || 'Ошибка');
+      setLoading(false);
+      return;
+    }
+
+    if (!resetToken) {
+      showToast('Отсутствует токен сброса пароля');
+      setLoading(false);
+      return;
+    }
+
+    const result = await authAPI.resetPassword(resetToken, passwordInput);
+
+    setLoading(false);
+
+    if (!result.success) {
+      showToast(result.error || 'Ошибка сброса пароля');
+      return;
+    }
+
+    showToast('Пароль успешно изменен! Теперь вы можете войти.');
+    setMode('login');
+    setPasswordInput('');
+  };
+
   const handleCopy = () => {
     if (!authBotLink) return;
     navigator.clipboard.writeText(authBotLink);
@@ -732,8 +772,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast
         )}
 
         {authTab === 'email' && (
-          <form onSubmit={mode === 'register' ? handleEmailRegister : mode === 'forgot' ? handleForgotPassword : handleEmailLogin} className="space-y-3">
-            {mode !== 'forgot' && (
+          <form onSubmit={mode === 'register' ? handleEmailRegister : mode === 'forgot' ? handleForgotPassword : mode === 'reset' ? handleResetPassword : handleEmailLogin} className="space-y-3">
+            {mode !== 'forgot' && mode !== 'reset' && (
               <div className="flex gap-2 bg-slate-100 rounded-lg p-1">
                 <button
                   type="button"
@@ -774,20 +814,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                <input
-                  type="email"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  placeholder="example@gmail.com"
-                  className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-sky-500"
-                  disabled={loading}
-                />
+            {mode !== 'reset' && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    placeholder="example@gmail.com"
+                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-slate-50 border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-sky-500"
+                    disabled={loading}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {mode !== 'forgot' && (
               <div>
@@ -837,7 +879,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, showToast
               className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-[#0088cc] to-[#229ed9] hover:from-[#0077b5] hover:to-[#1d8cb8] disabled:from-slate-400 disabled:to-slate-400 text-white font-bold text-xs transition-all shadow-md shadow-[#0088cc]/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-              {mode === 'register' ? 'Зарегистрироваться' : mode === 'forgot' ? 'Отправить ссылку' : 'Войти'}
+              {mode === 'register' ? 'Зарегистрироваться' : mode === 'forgot' ? 'Отправить ссылку' : mode === 'reset' ? 'Изменить пароль' : 'Войти'}
             </button>
 
             <div className="text-center text-xs text-slate-500 space-y-1">

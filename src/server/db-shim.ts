@@ -11,12 +11,12 @@ export async function ensureAuthSchema() {
       password_hash TEXT NOT NULL,
       email_verified INTEGER NOT NULL DEFAULT 0,
       verification_token TEXT,
-      verification_token_expiry INTEGER,
+      verification_token_expiry BIGINT,
       reset_token TEXT,
-      reset_token_expiry INTEGER,
+      reset_token_expiry BIGINT,
       last_login_at TEXT,
       login_attempts INTEGER NOT NULL DEFAULT 0,
-      lock_until INTEGER,
+      lock_until BIGINT,
       status TEXT NOT NULL DEFAULT 'active',
       created_at TEXT NOT NULL,
       is_partner INTEGER DEFAULT 0,
@@ -38,11 +38,6 @@ export async function ensureAuthSchema() {
       created_at BIGINT NOT NULL,
       confirmed_at BIGINT
     );
-
-    ALTER TABLE telegram_auth_sessions
-      ALTER COLUMN auth_date TYPE BIGINT USING auth_date::BIGINT,
-      ALTER COLUMN created_at TYPE BIGINT USING created_at::BIGINT,
-      ALTER COLUMN confirmed_at TYPE BIGINT USING confirmed_at::BIGINT;
 
     CREATE TABLE IF NOT EXISTS registered_users (
       id TEXT PRIMARY KEY,
@@ -145,6 +140,14 @@ export async function ensureAuthSchema() {
   try { await pool.query(`ALTER TABLE users ADD COLUMN referral_code TEXT UNIQUE;`); } catch (e) {}
   try { await pool.query(`ALTER TABLE users ADD COLUMN referred_by TEXT;`); } catch (e) {}
   try { await pool.query(`ALTER TABLE users ADD COLUMN bonus_balance REAL DEFAULT 0;`); } catch (e) {}
+
+  // Migrate column types to BIGINT safely
+  try { await pool.query(`ALTER TABLE users ALTER COLUMN verification_token_expiry TYPE BIGINT USING verification_token_expiry::BIGINT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE users ALTER COLUMN reset_token_expiry TYPE BIGINT USING reset_token_expiry::BIGINT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE users ALTER COLUMN lock_until TYPE BIGINT USING lock_until::BIGINT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE telegram_auth_sessions ALTER COLUMN auth_date TYPE BIGINT USING auth_date::BIGINT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE telegram_auth_sessions ALTER COLUMN created_at TYPE BIGINT USING created_at::BIGINT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE telegram_auth_sessions ALTER COLUMN confirmed_at TYPE BIGINT USING confirmed_at::BIGINT;`); } catch (e) {}
 
   // Migrate registered_users table
   try { await pool.query(`ALTER TABLE registered_users ADD COLUMN purchased_courses_count INTEGER DEFAULT 0;`); } catch (e) {}

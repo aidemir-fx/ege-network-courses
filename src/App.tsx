@@ -27,6 +27,8 @@ export default function App() {
   const [isHowItWorksOpen, setIsHowItWorksOpen] = useState<boolean>(false);
   const [isPlayerOpen, setIsPlayerOpen] = useState<boolean>(false);
   const [isSupportOpen, setIsSupportOpen] = useState<boolean>(false);
+  const [authModalInitialMode, setAuthModalInitialMode] = useState<'login' | 'register' | 'forgot' | 'reset'>('login');
+  const [authModalResetToken, setAuthModalResetToken] = useState<string | undefined>(undefined);
   const [legalModalType, setLegalModalType] = useState<'privacy' | 'terms' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(() => getCurrentUser());
@@ -119,9 +121,11 @@ export default function App() {
     return () => stopTokenRefresh();
   }, []);
 
-  // Обработка токенов подтверждения email из URL
+  // Обработка токенов подтверждения email и сброса пароля из URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    // Подтверждение почты
     const verifyToken = params.get('verify');
     if (verifyToken) {
       authAPI.verifyEmail(verifyToken).then((res) => {
@@ -134,6 +138,17 @@ export default function App() {
         cleanUrl.searchParams.delete('verify');
         window.history.replaceState(null, '', cleanUrl.toString());
       });
+    }
+
+    // Сброс пароля
+    const resetTokenParam = params.get('reset');
+    if (resetTokenParam) {
+      setAuthModalInitialMode('reset');
+      setAuthModalResetToken(resetTokenParam);
+      setIsAuthOpen(true);
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('reset');
+      window.history.replaceState(null, '', cleanUrl.toString());
     }
   }, []);
 
@@ -266,6 +281,12 @@ export default function App() {
     showToast('Корзина очищена');
   };
 
+  const openAuthModal = () => {
+    setAuthModalInitialMode('login');
+    setAuthModalResetToken(undefined);
+    openAuthModal();
+  };
+
   const handleLogout = () => {
     setCurrentUser(null);
     saveCurrentUser(null);
@@ -298,7 +319,7 @@ export default function App() {
           setActivePage={setActivePage}
           cartCount={cartItems.length}
           onOpenCart={() => setIsCartOpen(true)}
-          onOpenAuthModal={() => setIsAuthOpen(true)}
+          onOpenAuthModal={() => openAuthModal()}
           onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
           currentUser={currentUser}
           onLogout={handleLogout}
@@ -315,7 +336,7 @@ export default function App() {
             theme={theme}
             onAddToCart={handleAddToCart}
             onOpenCart={() => setIsCartOpen(true)}
-            onOpenAuthModal={() => setIsAuthOpen(true)}
+            onOpenAuthModal={() => openAuthModal()}
             onOpenHowItWorks={() => setIsHowItWorksOpen(true)}
             showToast={showToast}
             setActivePage={setActivePage}
@@ -326,7 +347,7 @@ export default function App() {
           <EgePage
             onAddToCart={handleAddToCart}
             onOpenCart={() => setIsCartOpen(true)}
-            onOpenAuthModal={() => setIsAuthOpen(true)}
+            onOpenAuthModal={() => openAuthModal()}
             showToast={showToast}
             setActivePage={setActivePage}
           />
@@ -337,7 +358,7 @@ export default function App() {
         {activePage === 'dashboard' && (
           <DashboardPage
             currentUser={currentUser}
-            onOpenAuthModal={() => setIsAuthOpen(true)}
+            onOpenAuthModal={() => openAuthModal()}
             onLogout={handleLogout}
             setActivePage={setActivePage}
             showToast={showToast}
@@ -374,7 +395,7 @@ export default function App() {
           setActivePage={setActivePage}
           cartCount={cartItems.length}
           onOpenCart={() => setIsCartOpen(true)}
-          onOpenAuthModal={() => setIsAuthOpen(true)}
+          onOpenAuthModal={() => openAuthModal()}
           currentUser={currentUser}
           theme={theme}
           onToggleTheme={toggleTheme}
@@ -388,7 +409,7 @@ export default function App() {
         cartItems={cartItems}
         onRemoveItem={handleRemoveItem}
         onClearCart={handleClearCart}
-        onOpenAuthModal={() => setIsAuthOpen(true)}
+        onOpenAuthModal={() => openAuthModal()}
         showToast={showToast}
       />
 
@@ -398,6 +419,8 @@ export default function App() {
         onClose={() => setIsAuthOpen(false)}
         showToast={showToast}
         onLoginSuccess={handleLoginSuccess}
+        initialMode={authModalInitialMode}
+        resetToken={authModalResetToken}
       />
 
       {/* How It Works Visual Modal */}

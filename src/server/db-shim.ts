@@ -122,6 +122,15 @@ export async function ensureAuthSchema() {
       is_read INTEGER DEFAULT 0
     );
 
+    CREATE TABLE IF NOT EXISTS broadcasts (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      target TEXT DEFAULT 'all',
+      created_at TEXT NOT NULL,
+      author_id TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS referral_rewards (
       id TEXT PRIMARY KEY,
       referrer_id TEXT NOT NULL,

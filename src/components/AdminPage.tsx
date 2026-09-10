@@ -74,7 +74,8 @@ import {
   sendSupportMessage,
   fetchServerSupportMessages,
   getStoredBroadcasts,
-  saveStoredBroadcasts,
+  fetchServerBroadcasts,
+  sendBroadcast,
   getStoredSettings,
   saveStoredSettings,
   fetchServerSettings,
@@ -118,8 +119,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
     fetchServerLogs().then((logs) => setSystemLogs(logs));
     fetchServerSettings().then((settings) => setSiteSettings(settings));
     fetchServerSupportMessages().then((msgs) => setSupportMessagesList(msgs));
+    fetchServerBroadcasts().then((bcs) => setBroadcastsList(bcs));
     setCoursesList(getStoredCourses());
-    setBroadcastsList(getStoredBroadcasts());
   };
 
   useEffect(() => {
@@ -665,12 +666,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
       body: broadcastBody.trim(),
       target: broadcastTarget,
       sentAt: new Date().toLocaleString('ru-RU'),
-      recipientsCount
+      recipientsCount,
+      authorId: currentUser?.id
     };
 
-    const updated = [newBroadcast, ...broadcastsList];
-    setBroadcastsList(updated);
-    saveStoredBroadcasts(updated);
+    sendBroadcast(newBroadcast);
+    setBroadcastsList([newBroadcast, ...broadcastsList]);
 
     addSystemLog('Массовая рассылка', `Отправлена рассылка "${newBroadcast.title}" (${recipientsCount} получателей)`, currentUser?.telegramId);
     showToast(`Рассылка "${broadcastTitle}" отправлена ${recipientsCount} пользователям!`);

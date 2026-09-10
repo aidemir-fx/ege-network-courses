@@ -146,7 +146,8 @@ export interface Broadcast {
   body: string;
   target: string;
   sentAt: string;
-  recipientsCount: number;
+  recipientsCount?: number;
+  authorId?: string;
 }
 
 export interface SiteSettings {

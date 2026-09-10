@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ShoppingBag, X, LogOut, User as UserIcon, Bell, LayoutDashboard, ShieldCheck, Sun, Moon } from 'lucide-react';
 import { PageType, User, Broadcast } from '../types';
 import { checkAdminByTelegramId } from '../utils/adminAuth';
-import { getStoredBroadcasts } from '../utils/adminStore';
+import { getStoredBroadcasts, fetchServerBroadcasts } from '../utils/adminStore';
 import logoImage from '../assets/images/logo.jpg';
 import nightLogoImage from '../assets/images/night-logo.jpeg';
 
@@ -37,12 +37,13 @@ export const Header: React.FC<HeaderProps> = ({
   const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
-    const list = getStoredBroadcasts();
-    setBroadcasts(list);
-    const lastReadId = localStorage.getItem('ege_last_read_broadcast');
-    if (list.length > 0 && (!lastReadId || list[0].id !== lastReadId)) {
-      setHasUnread(true);
-    }
+    fetchServerBroadcasts().then((list) => {
+      setBroadcasts(list);
+      const lastReadId = localStorage.getItem('ege_last_read_broadcast');
+      if (list.length > 0 && (!lastReadId || list[0].id !== lastReadId)) {
+        setHasUnread(true);
+      }
+    });
   }, []);
 
   const handleOpenNotifications = () => {

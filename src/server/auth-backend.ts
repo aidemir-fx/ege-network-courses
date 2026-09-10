@@ -2431,8 +2431,10 @@ router.post('/support', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'Invalid support message data' });
     }
     await authDatabase.prepare(`
-      INSERT OR REPLACE INTO support_messages (id, user_telegram_id, user_name, sender, text, created_at, is_read)
+      INSERT INTO support_messages (id, user_telegram_id, user_name, sender, text, created_at, is_read)
       VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        is_read = EXCLUDED.is_read
     `).run(
       msg.id,
       msg.userTelegramId || 'guest',
@@ -2443,6 +2445,49 @@ router.post('/support', async (req: Request, res: Response) => {
       msg.isRead ? 1 : 0
     );
     return res.json({ success: true, message: msg });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/broadcasts
+router.get('/broadcasts', async (_req: Request, res: Response) => {
+  try {
+    const rows = await authDatabase.prepare('SELECT * FROM broadcasts ORDER BY created_at DESC, id DESC').all() as any[];
+    const broadcasts = rows.map(r => ({
+      id: r.id,
+      title: r.title,
+      body: r.body,
+      target: r.target || 'all',
+      sentAt: r.created_at,
+      authorId: r.author_id
+    }));
+    return res.json({ success: true, broadcasts });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/broadcasts
+router.post('/broadcasts', async (req: Request, res: Response) => {
+  try {
+    const bc = req.body;
+    if (!bc || !bc.id || !bc.title) {
+      return res.status(400).json({ success: false, error: 'Invalid broadcast data' });
+    }
+    await authDatabase.prepare(`
+      INSERT INTO broadcasts (id, title, body, target, created_at, author_id)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO NOTHING
+    `).run(
+      bc.id,
+      bc.title,
+      bc.body || '',
+      bc.target || 'all',
+      bc.sentAt || new Date().toISOString(),
+      bc.authorId || null
+    );
+    return res.json({ success: true, broadcast: bc });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });
   }

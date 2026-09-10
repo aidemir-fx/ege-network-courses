@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { User, PageType, UserPurchase, Broadcast } from '../types';
 import { VideoPlayer, DEFAULT_ALICEEGE_API_KEY } from './player/VideoPlayer';
-import { fetchUserPurchases, getStoredCourses, getStoredBroadcasts, fetchExternalCourses, ExternalCourseItem, removeUserCourseServer } from '../utils/adminStore';
+import { fetchUserPurchases, getStoredCourses, getStoredBroadcasts, fetchServerBroadcasts, fetchExternalCourses, ExternalCourseItem, removeUserCourseServer } from '../utils/adminStore';
 import { FormattedCourseTitle, formatCourseTitle } from '../utils/courseTitleFormatter';
 import { buildCourseLessons, CourseLessonItem, decodeFilenameFromUrl } from '../utils/courseLessonsHelper';
 
@@ -237,7 +237,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   useEffect(() => {
-    setBroadcasts(getStoredBroadcasts());
+    fetchServerBroadcasts().then((bcs) => setBroadcasts(bcs));
     if (currentUser) {
       fetchPurchases();
     }

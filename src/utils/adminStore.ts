@@ -682,6 +682,32 @@ export function saveStoredBroadcasts(broadcasts: Broadcast[]): void {
   }
 }
 
+export async function fetchServerBroadcasts(): Promise<Broadcast[]> {
+  try {
+    const res = await fetch('/api/broadcasts');
+    const data = await res.json();
+    if (data.success && data.broadcasts) {
+      localStorage.setItem(BROADCASTS_KEY, JSON.stringify(data.broadcasts));
+      return data.broadcasts;
+    }
+  } catch (e) {
+    console.error('Failed to fetch server broadcasts', e);
+  }
+  return getStoredBroadcasts();
+}
+
+export function sendBroadcast(bc: Broadcast): Broadcast {
+  const broadcasts = getStoredBroadcasts();
+  const updated = [bc, ...broadcasts];
+  saveStoredBroadcasts(updated);
+  fetch('/api/broadcasts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bc),
+  }).catch(() => {});
+  return bc;
+}
+
 // --- SETTINGS ---
 export function getStoredSettings(): SiteSettings {
   try {

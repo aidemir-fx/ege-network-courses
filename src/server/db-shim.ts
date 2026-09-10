@@ -136,6 +136,24 @@ export async function ensureAuthSchema() {
       created_at TEXT NOT NULL
     );
   `);
+
+  try { await pool.query(`ALTER TABLE user_purchases ADD COLUMN expires_at TEXT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE user_purchases ADD COLUMN tariff_type TEXT DEFAULT 'monthly';`); } catch (e) {}
+
+  // Migrate users table
+  try { await pool.query(`ALTER TABLE users ADD COLUMN is_partner INTEGER DEFAULT 0;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE users ADD COLUMN referral_code TEXT UNIQUE;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE users ADD COLUMN referred_by TEXT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE users ADD COLUMN bonus_balance REAL DEFAULT 0;`); } catch (e) {}
+
+  // Migrate registered_users table
+  try { await pool.query(`ALTER TABLE registered_users ADD COLUMN purchased_courses_count INTEGER DEFAULT 0;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE registered_users ADD COLUMN is_partner INTEGER DEFAULT 0;`); } catch (e) {}
+
+  // Migrate orders table
+  try { await pool.query(`ALTER TABLE orders ADD COLUMN discount_amount REAL DEFAULT 0;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE orders ADD COLUMN promo_code TEXT;`); } catch (e) {}
+  try { await pool.query(`ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT 'sbp';`); } catch (e) {}
 }
 
 export const authDatabase = {

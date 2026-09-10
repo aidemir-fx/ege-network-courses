@@ -1633,14 +1633,6 @@ const deleteOrderStmt = authDatabase.prepare(`
   DELETE FROM orders WHERE id = ?
 `);
 
-// Ensure table schema upgrades
-try {
-//  await authDatabase.prepare('ALTER TABLE user_purchases ADD COLUMN expires_at TEXT').run();
-} catch {}
-try {
-//  await authDatabase.prepare('ALTER TABLE user_purchases ADD COLUMN tariff_type TEXT DEFAULT "monthly"').run();
-} catch {}
-
 // Purchases statements
 const insertUserPurchaseStmt = authDatabase.prepare(`
   INSERT INTO user_purchases (

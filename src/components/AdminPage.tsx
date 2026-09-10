@@ -316,7 +316,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
     if (!user) return;
     const nextPartner = !user.isPartner;
     try {
-      const res = await fetch(`/api/admin/users/${userId}/partner`, {
+      const res = await fetch(`/api/auth/users/${userId}/partner`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

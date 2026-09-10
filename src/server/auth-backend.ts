@@ -235,6 +235,7 @@ const mapUser = (row: any): UserDocument => ({
   lockUntil: row.lock_until || undefined,
   status: row.status,
   createdAt: row.created_at,
+  isPartner: row.is_partner === 1,
 });
 
 const saveUser = async (user: UserDocument): Promise<void> => {
@@ -1500,6 +1501,9 @@ router.post('/users/sync', async (req: Request, res: Response) => {
 
     const userId = user.id || (tgId ? `usr-${tgId}` : (user.email ? `usr-email-${user.email}` : `usr-${Date.now()}`));
 
+    // We do NOT pass is_partner from the client to prevent arbitrary privilege escalation.
+    // We only update last_login, name, etc. The DB schema uses COALESCE(excluded.is_partner, registered_users.is_partner),
+    // but we can just pass NULL for isPartner here so it keeps the existing value.
     await upsertRegisteredUserStmt.run(
       userId,
       tgId,
@@ -1511,16 +1515,20 @@ router.post('/users/sync', async (req: Request, res: Response) => {
       regDate,
       now,
       user.purchasedCourses?.length || 0,
-      user.isPartner ? 1 : 0
+      null // Pass NULL so COALESCE keeps the DB value
     );
 
     console.log(`[Admin Auth] User synced: ${user.name} (TG: ${tgId}, Email: ${user.email}, Role: ${finalRole})`);
+
+    // Fetch the fresh state from DB to return to client (especially for isPartner)
+    const freshUser: any = await authDatabase.prepare('SELECT * FROM registered_users WHERE id = ?').get(userId);
 
     return res.json({
       success: true,
       user: {
         ...user,
         role: finalRole,
+        isPartner: freshUser ? freshUser.is_partner === 1 : false,
       },
     });
   } catch (err: any) {

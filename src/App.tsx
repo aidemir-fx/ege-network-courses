@@ -44,6 +44,28 @@ export default function App() {
     });
   }, [activePage]);
 
+  useEffect(() => {
+    if (currentUser) {
+      fetch('/api/auth/users/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: currentUser }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.user) {
+            // Check if there's any difference before setting state
+            if (data.user.isPartner !== currentUser.isPartner || data.user.role !== currentUser.role) {
+              const freshUser = { ...currentUser, ...data.user };
+              setCurrentUser(freshUser);
+              saveCurrentUser(freshUser);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, []); // Run once on mount
+
   // Синхронизация администраторов с сервером (.env)
   useEffect(() => {
     syncAdminsWithServer().then((adminIds) => {

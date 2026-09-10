@@ -350,7 +350,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </div>
             </div>
 
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3 pt-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
               {broadcasts.map((bc) => (
                 <div
                   key={bc.id}

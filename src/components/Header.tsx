@@ -233,7 +233,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
 
-                <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
+                <div className="max-h-80 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                   {broadcasts.length === 0 ? (
                     <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs">
                       Пока нет новых уведомлений

@@ -44,6 +44,15 @@ export default function App() {
     });
   }, [activePage]);
 
+  // Capture referral code from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      localStorage.setItem('referral_code', ref);
+    }
+  }, []);
+
   useEffect(() => {
     if (currentUser) {
       fetch('/api/auth/users/sync', {

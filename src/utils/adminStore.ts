@@ -185,11 +185,13 @@ export function registerOrUpdateUser(user: User): void {
   }
   saveStoredUsers(users);
 
+  const refCode = localStorage.getItem('referral_code') || undefined;
+
   // Синхронизируем с сервером в фоне
   fetch('/api/auth/users/sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user }),
+    body: JSON.stringify({ user, ref: refCode }),
   }).catch((err) => console.warn('Failed to sync user with server:', err));
 }
 

@@ -1487,7 +1487,7 @@ const getAllEmailUsersStmt = authDatabase.prepare(`
 // POST /api/admin/users/sync - сохранение пользователя при входе с любого устройства
 router.post('/users/sync', async (req: Request, res: Response) => {
   try {
-    const { user } = req.body;
+    const { user, ref } = req.body;
     if (!user) {
       return res.status(400).json({ success: false, error: 'User data required' });
     }
@@ -1500,6 +1500,42 @@ router.post('/users/sync', async (req: Request, res: Response) => {
     const regDate = user.registeredAt || new Date().toISOString().split('T')[0];
 
     const userId = user.id || (tgId ? `usr-${tgId}` : (user.email ? `usr-email-${user.email}` : `usr-${Date.now()}`));
+
+    // Sync to the 'users' table if not exists (for referrals and standard backend auth to work)
+    const existingUser = await findUserById.get(userId);
+    if (!existingUser) {
+      try {
+        const fallbackEmail = user.email || (tgId ? `tg_${tgId}@telegram.user` : `usr_${userId}@unknown.user`);
+        await insertUser.run(
+          userId,
+          fallbackEmail,
+          user.name || user.firstName || 'Пользователь',
+          '', // password hash empty
+          1, // email verified
+          null, null, 0,
+          user.status || 'active',
+          new Date().toISOString()
+        );
+
+        // Apply referral logic
+        const refCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+        let referredBy = null;
+        if (ref) {
+          const referrer: any = await authDatabase.prepare('SELECT id FROM users WHERE referral_code = ?').get(ref);
+          if (referrer) referredBy = referrer.id;
+        }
+        await authDatabase.prepare('UPDATE users SET referral_code = ?, referred_by = ? WHERE id = ?').run(refCode, referredBy, userId);
+      } catch (e: any) {
+        console.warn('[Admin Auth] Failed to insert into users table:', e.message);
+      }
+    } else {
+      // If they exist but don't have a referral code, give them one
+      const checkRef: any = await authDatabase.prepare('SELECT referral_code FROM users WHERE id = ?').get(userId);
+      if (checkRef && !checkRef.referral_code) {
+        const refCode = crypto.randomBytes(4).toString('hex').toUpperCase();
+        await authDatabase.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(refCode, userId);
+      }
+    }
 
     // We do NOT pass is_partner from the client to prevent arbitrary privilege escalation.
     // We only update last_login, name, etc. The DB schema uses COALESCE(excluded.is_partner, registered_users.is_partner),
@@ -1874,7 +1910,7 @@ export async function confirmServerOrderPayment(paymentIdOrUuid: string) {
         const user: any = await authDatabase.prepare('SELECT id, referred_by FROM users WHERE id = ?').get(order.user_id);
         if (user && user.referred_by) {
           // Проверяем, первая ли это оплата
-          const paidOrdersCount: any = authDatabase.prepare('SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND status = "paid"').get(order.user_id);
+          const paidOrdersCount: any = authDatabase.prepare("SELECT COUNT(*) as cnt FROM orders WHERE user_id = ? AND status = 'paid'").get(order.user_id);
           
 
         }

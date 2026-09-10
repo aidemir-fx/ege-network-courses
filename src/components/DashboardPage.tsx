@@ -1036,12 +1036,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                         <input
                           type="text"
                           readOnly
-                          value={`https://egenetwork.ru/?ref=${referralData.stats?.referralCode || ''}`}
+                          value={`https://egenetwork11.com/?ref=${referralData.stats?.referralCode || ''}`}
                           className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700 font-medium focus:outline-none"
                         />
                         <button
                           onClick={() => {
-                            navigator.clipboard.writeText(`https://egenetwork.ru/?ref=${referralData.stats?.referralCode || ''}`);
+                            navigator.clipboard.writeText(`https://egenetwork11.com/?ref=${referralData.stats?.referralCode || ''}`);
                             showToast("Ссылка скопирована!");
                           }}
                           className="px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition-colors text-sm shrink-0 cursor-pointer"

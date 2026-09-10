@@ -57,10 +57,11 @@ export default function App() {
 
   useEffect(() => {
     if (currentUser) {
+      const refCode = localStorage.getItem('referral_code') || undefined;
       fetch('/api/auth/users/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: currentUser }),
+        body: JSON.stringify({ user: currentUser, ref: refCode }),
       })
         .then((res) => res.json())
         .then((data) => {

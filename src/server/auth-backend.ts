@@ -1475,8 +1475,8 @@ const upsertRegisteredUserStmt = authDatabase.prepare(`
 
 const getAllRegisteredUsersStmt = authDatabase.prepare(`
   SELECT ru.*, 
-    (SELECT COUNT(*) FROM users u WHERE u.referred_by = (SELECT referral_code FROM users u2 WHERE u2.id = ru.id)) as total_referred,
-    (SELECT COUNT(*) FROM orders o JOIN users u ON o.user_id = u.id WHERE u.referred_by = (SELECT referral_code FROM users u2 WHERE u2.id = ru.id) AND o.status = 'paid') as total_referral_purchases
+    (SELECT COUNT(*) FROM users u WHERE u.referred_by = ru.id) as total_referred,
+    (SELECT COUNT(*) FROM orders o JOIN users u ON o.user_id = u.id WHERE u.referred_by = ru.id AND o.status = 'paid') as total_referral_purchases
   FROM registered_users ru ORDER BY last_login DESC
 `);
 
@@ -1530,10 +1530,17 @@ router.post('/users/sync', async (req: Request, res: Response) => {
       }
     } else {
       // If they exist but don't have a referral code, give them one
-      const checkRef: any = await authDatabase.prepare('SELECT referral_code FROM users WHERE id = ?').get(userId);
+      const checkRef: any = await authDatabase.prepare('SELECT referral_code, referred_by FROM users WHERE id = ?').get(userId);
       if (checkRef && !checkRef.referral_code) {
         const refCode = crypto.randomBytes(4).toString('hex').toUpperCase();
         await authDatabase.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(refCode, userId);
+      }
+      // If they have NO referred_by, but ref was provided (happens on first sync after TG auth)
+      if (checkRef && !checkRef.referred_by && ref) {
+        const referrer: any = await authDatabase.prepare('SELECT id FROM users WHERE referral_code = ?').get(ref);
+        if (referrer && referrer.id !== userId) {
+          await authDatabase.prepare('UPDATE users SET referred_by = ? WHERE id = ?').run(referrer.id, userId);
+        }
       }
     }
 

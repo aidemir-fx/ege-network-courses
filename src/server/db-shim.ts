@@ -187,19 +187,34 @@ export const authDatabase = {
 
     return {
       get: async (...params: any[]) => {
-        const pool = createPool();
-        const res = await pool.query(pgSql, params);
-        return res.rows[0];
+        try {
+          const pool = createPool();
+          const res = await pool.query(pgSql, params);
+          return res.rows[0];
+        } catch (err) {
+          console.error('[DB GET Error]', err, pgSql, params);
+          throw err;
+        }
       },
       all: async (...params: any[]) => {
-        const pool = createPool();
-        const res = await pool.query(pgSql, params);
-        return res.rows;
+        try {
+          const pool = createPool();
+          const res = await pool.query(pgSql, params);
+          return res.rows;
+        } catch (err) {
+          console.error('[DB ALL Error]', err, pgSql, params);
+          throw err;
+        }
       },
       run: async (...params: any[]) => {
-        const pool = createPool();
-        const res = await pool.query(pgSql, params);
-        return { lastInsertRowid: null, changes: res.rowCount };
+        try {
+          const pool = createPool();
+          const res = await pool.query(pgSql, params);
+          return { lastInsertRowid: null, changes: res.rowCount };
+        } catch (err) {
+          console.error('[DB RUN Error]', err, pgSql, params);
+          throw err;
+        }
       }
     };
   }

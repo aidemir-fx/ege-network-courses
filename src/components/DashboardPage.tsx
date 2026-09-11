@@ -222,6 +222,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const [userPurchases, setUserPurchases] = useState<UserPurchase[]>([]);
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(false);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [hiddenBroadcasts, setHiddenBroadcasts] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ege_hidden_bcs') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  const hideBroadcast = (id: string) => {
+    const updated = [...hiddenBroadcasts, id];
+    setHiddenBroadcasts(updated);
+    localStorage.setItem('ege_hidden_bcs', JSON.stringify(updated));
+  };
+
+  const clearAllBroadcasts = () => {
+    const allIds = broadcasts.map(b => b.id);
+    const updated = Array.from(new Set([...hiddenBroadcasts, ...allIds]));
+    setHiddenBroadcasts(updated);
+    localStorage.setItem('ege_hidden_bcs', JSON.stringify(updated));
+  };
 
   const fetchPurchases = async () => {
     if (!currentUser) return;
@@ -334,38 +354,55 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* BROADCASTS / ANNOUNCEMENTS SECTION */}
-        {broadcasts.length > 0 && (
-          <div className="bg-white rounded-[2rem] p-6 sm:p-8 border border-slate-100 shadow-2xs space-y-4">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-orange-100 text-[#FF6B35] flex items-center justify-center font-bold">
-                <Bell className="w-5 h-5" />
+        {broadcasts.filter(bc => !hiddenBroadcasts.includes(bc.id)).length > 0 && (
+          <div className="bg-white rounded-[2rem] p-6 sm:p-8 border border-slate-100 shadow-2xs space-y-4 relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-orange-100 text-[#FF6B35] flex items-center justify-center font-bold">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="bg-[#FFF1E8] text-[#FF6B35] px-3 py-0.5 rounded-full text-[11px] font-extrabold inline-block">
+                    Объявления
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight mt-0.5">
+                    Важные новости и рассылки
+                  </h3>
+                </div>
               </div>
-              <div>
-                <span className="bg-[#FFF1E8] text-[#FF6B35] px-3 py-0.5 rounded-full text-[11px] font-extrabold inline-block">
-                  Объявления
-                </span>
-                <h3 className="text-xl font-black text-slate-900 tracking-tight mt-0.5">
-                  Важные новости и рассылки
-                </h3>
-              </div>
+              
+              <button
+                onClick={clearAllBroadcasts}
+                className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                Очистить все
+              </button>
             </div>
 
             <div className="space-y-3 pt-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-              {broadcasts.map((bc) => (
+              {broadcasts.filter(bc => !hiddenBroadcasts.includes(bc.id)).map((bc) => (
                 <div
                   key={bc.id}
-                  className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/60 space-y-2 hover:border-orange-300 transition-all"
+                  className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200/60 space-y-2 hover:border-orange-300 transition-all relative group"
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <h4 className="font-extrabold text-sm text-slate-900 flex items-center gap-2 pr-8">
                       <span className="w-2 h-2 rounded-full bg-[#FF6B35]" />
                       {bc.title}
                     </h4>
-                    <span className="text-xs text-slate-400 font-medium">{bc.sentAt}</span>
+                    <span className="text-xs text-slate-400 font-medium whitespace-nowrap ml-2">{bc.sentAt}</span>
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-wrap pl-4">
                     {bc.body}
                   </p>
+                  
+                  <button
+                    onClick={() => hideBroadcast(bc.id)}
+                    className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                    title="Скрыть объявление"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>

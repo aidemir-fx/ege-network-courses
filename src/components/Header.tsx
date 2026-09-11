@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, X, LogOut, User as UserIcon, Bell, LayoutDashboard, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { ShoppingBag, X, LogOut, User as UserIcon, Bell, LayoutDashboard, ShieldCheck, Sun, Moon, Trash2 } from 'lucide-react';
 import { PageType, User, Broadcast } from '../types';
 import { checkAdminByTelegramId } from '../utils/adminAuth';
 import { getStoredBroadcasts, fetchServerBroadcasts } from '../utils/adminStore';
@@ -33,26 +33,62 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [hiddenBroadcasts, setHiddenBroadcasts] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('ege_hidden_bcs') || '[]');
+    } catch {
+      return [];
+    }
+  });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        setHiddenBroadcasts(JSON.parse(localStorage.getItem('ege_hidden_bcs') || '[]'));
+      } catch (e) {
+        // ignore
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     fetchServerBroadcasts().then((list) => {
       setBroadcasts(list);
       const lastReadId = localStorage.getItem('ege_last_read_broadcast');
-      if (list.length > 0 && (!lastReadId || list[0].id !== lastReadId)) {
+      const visibleList = list.filter(bc => !hiddenBroadcasts.includes(bc.id));
+      if (visibleList.length > 0 && (!lastReadId || visibleList[0].id !== lastReadId)) {
         setHasUnread(true);
       }
     });
-  }, []);
+  }, [hiddenBroadcasts]);
 
   const handleOpenNotifications = () => {
     setNotificationsOpen(!notificationsOpen);
     setHasUnread(false);
-    const list = getStoredBroadcasts();
-    if (list.length > 0) {
-      localStorage.setItem('ege_last_read_broadcast', list[0].id);
+    const visibleList = broadcasts.filter(bc => !hiddenBroadcasts.includes(bc.id));
+    if (visibleList.length > 0) {
+      localStorage.setItem('ege_last_read_broadcast', visibleList[0].id);
     }
+  };
+
+  const hideBroadcast = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = [...hiddenBroadcasts, id];
+    setHiddenBroadcasts(updated);
+    localStorage.setItem('ege_hidden_bcs', JSON.stringify(updated));
+  };
+
+  const clearAllBroadcasts = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const allIds = broadcasts.map(b => b.id);
+    const updated = Array.from(new Set([...hiddenBroadcasts, ...allIds]));
+    setHiddenBroadcasts(updated);
+    localStorage.setItem('ege_hidden_bcs', JSON.stringify(updated));
+    setNotificationsOpen(false);
   };
 
   const handleNav = (page: PageType) => {
@@ -225,30 +261,48 @@ export const Header: React.FC<HeaderProps> = ({
                     <Bell className="w-4 h-4 text-[#FF6B35]" />
                     <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">Уведомления и рассылки</h4>
                   </div>
-                  <button
-                    onClick={() => setNotificationsOpen(false)}
-                    className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {broadcasts.filter(bc => !hiddenBroadcasts.includes(bc.id)).length > 0 && (
+                      <button
+                        onClick={clearAllBroadcasts}
+                        className="text-[10px] font-bold text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer mr-1"
+                      >
+                        Очистить все
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setNotificationsOpen(false)}
+                      className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="max-h-80 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                  {broadcasts.length === 0 ? (
+                  {broadcasts.filter(bc => !hiddenBroadcasts.includes(bc.id)).length === 0 ? (
                     <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs">
                       Пока нет новых уведомлений
                     </div>
                   ) : (
-                    broadcasts.map((bc) => (
+                    broadcasts.filter(bc => !hiddenBroadcasts.includes(bc.id)).map((bc) => (
                       <div
                         key={bc.id}
-                        className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-700/70 space-y-1 hover:border-orange-200 dark:hover:border-orange-500/40 transition-all"
+                        className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-700/70 space-y-1 hover:border-orange-200 dark:hover:border-orange-500/40 transition-all relative group"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between pr-6">
                           <h5 className="font-bold text-xs text-slate-900 dark:text-white">{bc.title}</h5>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{bc.sentAt}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium whitespace-nowrap ml-2">{bc.sentAt}</span>
                         </div>
                         <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{bc.body}</p>
+                        
+                        <button
+                          onClick={(e) => hideBroadcast(bc.id, e)}
+                          className="absolute top-2 right-2 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                          title="Скрыть объявление"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))
                   )}

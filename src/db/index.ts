@@ -6,7 +6,17 @@ declare global {
   var _postgresPool: Pool | undefined;
 }
 
-export const createPool = () => {
+export const isPostgresConfigured = (): boolean => {
+  if (process.env.DATABASE_URL) return true;
+  if (process.env.POSTGRES_HOST && process.env.POSTGRES_PASSWORD) return true;
+  return false;
+};
+
+export const createPool = (): Pool | null => {
+  if (!isPostgresConfigured()) {
+    return null;
+  }
+
   if (!global._postgresPool) {
     if (process.env.DATABASE_URL) {
       global._postgresPool = new Pool({
@@ -17,9 +27,9 @@ export const createPool = () => {
     } else {
       global._postgresPool = new Pool({
         host: process.env.POSTGRES_HOST || process.env.SQL_HOST,
-        user: process.env.POSTGRES_USER || process.env.SQL_USER,
+        user: process.env.POSTGRES_USER || process.env.SQL_USER || 'postgres',
         password: process.env.POSTGRES_PASSWORD || process.env.SQL_PASSWORD,
-        database: process.env.POSTGRES_DB || process.env.SQL_DB_NAME,
+        database: process.env.POSTGRES_DB || process.env.SQL_DB_NAME || 'postgres',
         port: Number(process.env.POSTGRES_PORT) || 5432,
         max: 10,
         connectionTimeoutMillis: 3000,
@@ -27,13 +37,14 @@ export const createPool = () => {
     }
 
     global._postgresPool.on('error', (err) => {
-      console.error('Unexpected error on idle SQL pool client:', err);
+      console.warn('[Postgres Pool Warning]', err?.message);
     });
   }
 
   return global._postgresPool;
 };
 
-const pool = createPool();
-
-export const db = drizzle(pool, { schema });
+export const getDb = () => {
+  const pool = createPool();
+  return pool ? drizzle(pool, { schema }) : null;
+};

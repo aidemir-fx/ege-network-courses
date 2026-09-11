@@ -15,7 +15,7 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { authDatabase, ensureAuthSchema } from './db-shim.ts';
+import { authDatabase, ensureAuthSchema, isPostgresConfigured } from './db-shim.ts';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -141,15 +141,17 @@ async function startupTasks() {
   try {
     await ensureAuthSchema();
 
-    try {
-      await authDatabase.prepare(`
-        ALTER TABLE telegram_auth_sessions
-          ALTER COLUMN auth_date TYPE BIGINT USING auth_date::BIGINT,
-          ALTER COLUMN created_at TYPE BIGINT USING created_at::BIGINT,
-          ALTER COLUMN confirmed_at TYPE BIGINT USING confirmed_at::BIGINT;
-      `).run();
-    } catch (e) {
-      console.warn('[TelegramAuth] Ignore bigint migration warning:', e);
+    if (isPostgresConfigured()) {
+      try {
+        await authDatabase.prepare(`
+          ALTER TABLE telegram_auth_sessions
+            ALTER COLUMN auth_date TYPE BIGINT USING auth_date::BIGINT,
+            ALTER COLUMN created_at TYPE BIGINT USING created_at::BIGINT,
+            ALTER COLUMN confirmed_at TYPE BIGINT USING confirmed_at::BIGINT;
+        `).run();
+      } catch (e) {
+        // Ignored if already migrated or not supported
+      }
     }
 
     const existingUsers = await authDatabase.prepare('SELECT id FROM users WHERE referral_code IS NULL').all();

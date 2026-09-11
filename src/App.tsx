@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MessageSquare } from 'lucide-react';
 import { PageType, CartItem, ExamType, User } from './types';
 import { Header } from './components/Header';
 import { CatalogSection } from './components/CatalogSection';
@@ -33,8 +34,87 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(() => getCurrentUser());
   const [siteSettings, setSiteSettings] = useState(() => getStoredSettings());
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0);
+
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // A5
+      
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (e) {
+      // Ignore errors for browsers blocking autoplay
+    }
+  };
 
   useEffect(() => {
+    if (!currentUser || isSupportOpen) return;
+    
+    let lastNotifiedId = localStorage.getItem('ege_last_notified_support');
+    
+    const checkSupport = async () => {
+      const allMsgs = await fetchServerSupportMessages();
+      const userTgId = currentUser?.telegramId || currentUser?.id || 'guest-user';
+      const userMsgs = allMsgs.filter(m => m.userTelegramId === userTgId);
+      const adminMsgs = userMsgs.filter(m => m.sender === 'admin');
+      
+      const lastReadId = localStorage.getItem('ege_last_read_support');
+      const lastReadIndex = lastReadId ? adminMsgs.findIndex(m => m.id === lastReadId) : -1;
+      
+      const unreadCount = adminMsgs.length - (lastReadIndex + 1);
+      
+      if (unreadCount > 0) {
+        setUnreadSupportCount(unreadCount);
+        const latestAdminMsg = adminMsgs[adminMsgs.length - 1];
+        if (latestAdminMsg.id !== lastNotifiedId) {
+          lastNotifiedId = latestAdminMsg.id;
+          localStorage.setItem('ege_last_notified_support', lastNotifiedId);
+          playNotificationSound();
+          showToast('Новое сообщение в чате поддержки!');
+        }
+      } else {
+        setUnreadSupportCount(0);
+      }
+    };
+    
+    checkSupport();
+    const interval = setInterval(checkSupport, 5000);
+    return () => clearInterval(interval);
+  }, [currentUser, isSupportOpen]);
+
+  useEffect(() => {
+    if (isSupportOpen && currentUser) {
+      setUnreadSupportCount(0);
+      const checkAndMarkRead = async () => {
+        const allMsgs = await fetchServerSupportMessages();
+        const userTgId = currentUser?.telegramId || currentUser?.id || 'guest-user';
+        const userMsgs = allMsgs.filter(m => m.userTelegramId === userTgId);
+        const adminMsgs = userMsgs.filter(m => m.sender === 'admin');
+        if (adminMsgs.length > 0) {
+          const latestAdminMsg = adminMsgs[adminMsgs.length - 1];
+          localStorage.setItem('ege_last_read_support', latestAdminMsg.id);
+          localStorage.setItem('ege_last_notified_support', latestAdminMsg.id);
+        }
+      };
+      checkAndMarkRead();
+    }
+  }, [isSupportOpen, currentUser]);
+
+  useEffect(() => {
+
     fetchServerSettings().then((settings) => {
       setSiteSettings(settings);
     });
@@ -452,6 +532,22 @@ export default function App() {
         onClose={() => setIsSupportOpen(false)}
         currentUser={currentUser}
       />
+
+      {/* Floating Support Chat Button */}
+      {activePage !== 'admin' && currentUser && !isSupportOpen && (
+        <button
+          onClick={() => setIsSupportOpen(true)}
+          className="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-40 w-14 h-14 bg-gradient-to-tr from-orange-500 to-amber-500 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-105 transition-transform cursor-pointer shadow-orange-500/30"
+          title="Служба поддержки"
+        >
+          <MessageSquare className="w-6 h-6" />
+          {unreadSupportCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+              {unreadSupportCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Toast Notifications */}
       <Toast message={toastMessage} onClose={() => setToastMessage(null)} />

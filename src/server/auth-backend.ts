@@ -1421,10 +1421,11 @@ router.get('/referrals', authenticateToken, async (req: Request & { userId?: str
 
     // Список приглашенных
     const referredUsers: any[] = await authDatabase.prepare(`
-      SELECT id, name, created_at 
-      FROM users 
-      WHERE referred_by = ?
-      ORDER BY created_at DESC
+      SELECT u.id, u.name, u.created_at 
+      FROM users u
+      JOIN registered_users ru ON u.id = ru.id
+      WHERE u.referred_by = ?
+      ORDER BY u.created_at DESC
     `).all(req.userId!);
 
     // Статистика

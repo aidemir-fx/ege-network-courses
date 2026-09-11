@@ -1716,7 +1716,7 @@ const revokePurchasesByOrderIdStmt = authDatabase.prepare(`
 const updatePurchasedCountStmt = authDatabase.prepare(`
   UPDATE registered_users
   SET purchased_courses_count = (
-    SELECT COUNT(*) FROM user_purchases
+    SELECT CAST(COUNT(*) AS INTEGER) FROM user_purchases
     WHERE (user_id = registered_users.id OR user_telegram_id = registered_users.telegram_id)
       AND status = 'active'
   )

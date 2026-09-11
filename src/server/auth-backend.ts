@@ -1696,7 +1696,11 @@ const insertUserPurchaseStmt = authDatabase.prepare(`
 
 const findUserPurchasesStmt = authDatabase.prepare(`
   SELECT * FROM user_purchases
-  WHERE (user_id = ? OR (user_telegram_id IS NOT NULL AND user_telegram_id = ?))
+  WHERE (
+    user_id = ? 
+    OR user_id = ?
+    OR (user_telegram_id IS NOT NULL AND (user_telegram_id = ? OR user_telegram_id = ?))
+  )
     AND status = 'active'
   ORDER BY granted_at DESC NULLS LAST, id DESC
 `);
@@ -1938,7 +1942,20 @@ export async function confirmServerOrderPayment(paymentIdOrUuid: string) {
 // Helper: Get user active purchases
 export async function getUserPurchasesDirect(userId: string, telegramId?: string) {
   try {
-    const rows = await findUserPurchasesStmt.all(userId, telegramId || userId);
+    const rawUserId = String(userId || '').trim();
+    const rawTgId = String(telegramId || '').trim();
+    const cleanTg = normalizeTelegramId(rawTgId) || normalizeTelegramId(rawUserId);
+    const idVariant1 = rawUserId || (cleanTg ? `usr-${cleanTg}` : '');
+    const idVariant2 = cleanTg ? `usr-${cleanTg}` : idVariant1;
+    const tgVariant1 = cleanTg || null;
+    const tgVariant2 = rawTgId ? rawTgId.replace(/^@/, '') : (cleanTg || null);
+
+    const rows = await findUserPurchasesStmt.all(
+      idVariant1,
+      idVariant2,
+      tgVariant1,
+      tgVariant2
+    );
     return rows.map((r: any) => {
       let expiresAt = r.expires_at;
       const isAnnual = r.tariff_type === 'annual' || Number(r.price) > 1000;
@@ -2490,6 +2507,31 @@ router.post('/broadcasts', async (req: Request, res: Response) => {
     );
     return res.json({ success: true, broadcast: bc });
   } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/broadcasts/clear-all - Очистить все рассылки
+router.delete('/broadcasts/clear-all', async (_req: Request, res: Response) => {
+  try {
+    await authDatabase.prepare('DELETE FROM broadcasts').run();
+    recordSystemLog('Очистка рассылок', 'Все рассылки успешно удалены из базы');
+    return res.json({ success: true, message: 'Все рассылки удалены' });
+  } catch (err: any) {
+    console.error('[Broadcasts] Clear all error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/broadcasts/:id - Удалить одну рассылку
+router.delete('/broadcasts/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await authDatabase.prepare('DELETE FROM broadcasts WHERE id = ?').run(id);
+    recordSystemLog('Удаление рассылки', `Удалена рассылка с ID: ${id}`);
+    return res.json({ success: true, id });
+  } catch (err: any) {
+    console.error('[Broadcasts] Delete broadcast error:', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });

@@ -708,6 +708,33 @@ export function sendBroadcast(bc: Broadcast): Broadcast {
   return bc;
 }
 
+export async function deleteBroadcastServer(id: string): Promise<boolean> {
+  try {
+    const broadcasts = getStoredBroadcasts().filter((b) => b.id !== id);
+    saveStoredBroadcasts(broadcasts);
+    const res = await fetch(`/api/broadcasts/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('Failed to delete broadcast on server:', e);
+    return false;
+  }
+}
+
+export async function clearAllBroadcastsServer(): Promise<boolean> {
+  try {
+    saveStoredBroadcasts([]);
+    const res = await fetch('/api/broadcasts/clear-all', {
+      method: 'DELETE',
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('Failed to clear broadcasts on server:', e);
+    return false;
+  }
+}
+
 // --- SETTINGS ---
 export function getStoredSettings(): SiteSettings {
   try {

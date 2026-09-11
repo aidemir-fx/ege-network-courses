@@ -50,6 +50,14 @@ app.use((req, res, next) => {
 console.log('[Auth] Registering auth routes at /api/auth');
 console.log('[Auth] authRoutes type:', typeof authRoutes);
 app.use('/api/auth', authRoutes);
+app.get('/api/settings', (req, res, next) => {
+  req.url = '/settings';
+  authRoutes(req, res, next);
+});
+app.post('/api/settings', (req, res, next) => {
+  req.url = '/settings';
+  authRoutes(req, res, next);
+});
 
 // API route: Check UrlPay Configuration Status
 app.get('/api/payment-config-status', (req, res) => {

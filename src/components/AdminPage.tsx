@@ -76,6 +76,8 @@ import {
   getStoredBroadcasts,
   fetchServerBroadcasts,
   sendBroadcast,
+  deleteBroadcastServer,
+  clearAllBroadcastsServer,
   getStoredSettings,
   saveStoredSettings,
   fetchServerSettings,
@@ -677,6 +679,22 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
     showToast(`Рассылка "${broadcastTitle}" отправлена ${recipientsCount} пользователям!`);
     setBroadcastTitle('');
     setBroadcastBody('');
+  };
+
+  const handleDeleteBroadcast = async (id: string, title: string) => {
+    if (!window.confirm(`Удалить рассылку "${title}"?`)) return;
+    setBroadcastsList((prev) => prev.filter((b) => b.id !== id));
+    await deleteBroadcastServer(id);
+    addSystemLog('Удаление рассылки', `Удалена рассылка "${title}"`, currentUser?.telegramId);
+    showToast(`Рассылка "${title}" удалена`);
+  };
+
+  const handleClearAllBroadcasts = async () => {
+    if (!window.confirm('Вы уверены, что хотите полностью очистить ВСЕ рассылки? Это действие необратимо.')) return;
+    setBroadcastsList([]);
+    await clearAllBroadcastsServer();
+    addSystemLog('Очистка рассылок', 'Все рассылки были очищены администратором', currentUser?.telegramId);
+    showToast('Все рассылки успешно очищены!');
   };
 
   // --- SETTINGS HANDLERS ---
@@ -1755,7 +1773,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
 
                 {/* History of Broadcasts */}
                 <div className="bg-[#151C2C] p-6 rounded-2xl border border-slate-800/80 space-y-4">
-                  <h3 className="font-extrabold text-sm text-white">История рассылок</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-white">История рассылок</h3>
+                    {broadcastsList.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllBroadcasts}
+                        className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Очистить все</span>
+                      </button>
+                    )}
+                  </div>
 
                   {broadcastsList.length === 0 ? (
                     <div className="text-center py-8 text-xs text-slate-500">
@@ -1764,13 +1794,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({ currentUser, onExitAdmin, 
                   ) : (
                     <div className="space-y-3 max-h-[360px] overflow-y-auto">
                       {broadcastsList.map((bc) => (
-                        <div key={bc.id} className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/60 space-y-1">
-                          <div className="flex items-center justify-between text-xs">
+                        <div key={bc.id} className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800/60 space-y-1 relative group">
+                          <div className="flex items-center justify-between text-xs pr-8">
                             <span className="font-bold text-white">{bc.title}</span>
                             <span className="text-[10px] text-purple-400 font-mono">{bc.recipientsCount} подп.</span>
                           </div>
                           <p className="text-[11px] text-slate-300 line-clamp-2">{bc.body}</p>
                           <div className="text-[9px] text-slate-500 pt-1">{bc.sentAt}</div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteBroadcast(bc.id, bc.title)}
+                            className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-80 group-hover:opacity-100 cursor-pointer"
+                            title="Удалить рассылку"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>

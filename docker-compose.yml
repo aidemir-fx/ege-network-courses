@@ -5,32 +5,22 @@ services:
     build: .
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - PORT=3000
       - POSTGRES_HOST=db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
-      - POSTGRES_PORT=5432
       - SQL_HOST=db
-      - SQL_USER=postgres
-      - SQL_PASSWORD=postgres
-      - SQL_DB_NAME=postgres
-      - JWT_SECRET=change_this_to_a_random_secret_in_production
-      - TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-      - ADMIN_EMAIL=admin@example.com
-      - FRONTEND_URL=http://localhost:3000
     depends_on:
       db:
         condition: service_healthy
 
   db:
     image: postgres:15-alpine
+    env_file:
+      - .env
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - "5432:5432"

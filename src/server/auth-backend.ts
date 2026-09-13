@@ -15,7 +15,7 @@ import rateLimit from 'express-rate-limit';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { authDatabase, ensureAuthSchema, isPostgresConfigured } from './db-shim.ts';
+import { authDatabase, isPostgresConfigured } from './db-shim.ts';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -139,7 +139,6 @@ const normalizeTelegramId = (value?: string | number | null): string => {
 
 async function startupTasks() {
   try {
-    await ensureAuthSchema();
 
     if (isPostgresConfigured()) {
       try {
